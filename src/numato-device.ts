@@ -222,7 +222,7 @@ export class NumatoDevice implements IGPIODevice {
     if (!this.port.isOpen) throw new Error('Device not open');
   }
 
-  public sendGPO(gpo: number) {
+  public pulseGPO(gpo: number, resetTime: number = GPO_SPRINGBACK) {
     try {
       if ((gpo < 0) || (gpo >= this.gpiIndex)) throw new Error(`Invalid GPO number: ${gpo}, should be between 0 and ${this.gpiIndex - 1}`);
       this.validatePort();
@@ -232,7 +232,19 @@ export class NumatoDevice implements IGPIODevice {
       setTimeout(() => {
         this.gpioState.updateAt(gpo, false);
         this.queueCommand(Command.clearGPO(gpo, this.invertOutputs));
-      }, GPO_SPRINGBACK);
+      }, resetTime);
+    } catch (err: any) {
+      this.log('error', err.message);
+      this.error(err);
+    }
+  }
+
+  public setGPO(gpo: number, value: boolean) {
+    try {
+      if ((gpo < 0) || (gpo >= this.gpiIndex)) throw new Error(`Invalid GPO number: ${gpo}, should be between 0 and ${this.gpiIndex - 1}`);
+      this.validatePort();
+      this.gpioState.updateAt(gpo, value);
+      this.queueCommand(value ? Command.setGPO(gpo, this.invertOutputs) : Command.clearGPO(gpo, this.invertOutputs));
     } catch (err: any) {
       this.log('error', err.message);
       this.error(err);

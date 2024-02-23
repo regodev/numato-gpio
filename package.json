@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "mocha --require ts-node/register test/**/*.test.ts",
+    "test": "mocha",
     "dev": "cross-env NODE_ENV=dev ts-node src/app.ts"
   },
   "repository": {
@@ -35,7 +35,6 @@
     "chai": "^4.3.7",
     "mocha": "^10.2.0",
     "ts-node": "^10.9.2",
-    "tsup": "^8.0.2",
     "typescript": "^5.3.3"
   }
 }

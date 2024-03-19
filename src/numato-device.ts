@@ -31,6 +31,8 @@ export class NumatoDevice implements IGPIODevice {
   private port?: SerialPort;
   private parser?: ReadlineParser;
   private commandProcHandle?: NodeJS.Timeout;
+  private connectionChecker?: NodeJS.Timeout;
+  
   private commandQueue: ICommand[] = [];
   private gpioState;
   private portCount: number;
@@ -60,6 +62,23 @@ export class NumatoDevice implements IGPIODevice {
     this.gpioDir = NumatoDevice.getBinaryStateFromGpiCount(gpis, ports);
     this.gpiIndex = ports - gpis;
     this.lastTrigs = new Array(ports).fill(0);
+
+    let loggedReconnect = false;
+    this.connectionChecker = setInterval(async () => {
+      if (!this.port) {
+        this._state = 'uninitialized';
+        if (!loggedReconnect) {
+          this.log('info', 'Device not initialized, trying to reconnect..');
+          loggedReconnect = true;
+        }
+        try {
+          await this.init(false);
+          this.log('info', 'Numato device reconnected');
+          loggedReconnect = false;
+        } catch (err) {
+        }
+      }
+    }, 1000);
   }
 
   private log(level: string, message: string) {
@@ -96,7 +115,7 @@ export class NumatoDevice implements IGPIODevice {
         this.error(err);
         
         if (port.isOpen) {
-          port.close();
+          this.cleanup();
         }
         this._state = 'uninitialized';
       });
@@ -110,14 +129,14 @@ export class NumatoDevice implements IGPIODevice {
     });
   }
 
-  public async init(): Promise<void> {
+  public async init(log: boolean = true): Promise<void> {
     this.commandQueue = [];
     this._state = 'uninitialized';
 
-    this.log('info', 'Initializing..')
+    if (log) this.log('info', 'Initializing..')
 
     const path = await NumatoDevice.findDevice();
-    this.log('info', `Found Numato device at ${path}`);
+    if (log) this.log('info', `Found Numato device at ${path}`);
 
     this.port = await this.openPort(path);
     this.lastReceived = Date.now();
@@ -178,7 +197,7 @@ export class NumatoDevice implements IGPIODevice {
 
   private writeCommand(command: ICommand) {
     this.validatePort();
-    this.port!.write(command.data + '\r', 'ascii', (err) => {
+    this.port?.write(command.data + '\r', 'ascii', (err) => {
       if (err) {
         this.error(err);
         this.port?.close();
@@ -256,6 +275,7 @@ export class NumatoDevice implements IGPIODevice {
     if (this.port?.isOpen) {
       this.port?.close();
     }
+    this.port = undefined;
   }
 
   public static async findDevice(): Promise<string> {

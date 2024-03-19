@@ -89,7 +89,9 @@ export class NumatoDevice implements IGPIODevice {
 
   private async openPort(path: string): Promise<SerialPort> {
     return new Promise((resolve, reject) => {
-      const port = new SerialPort({ path, baudRate: 19200, autoOpen: false });
+      const port = new SerialPort({ path, baudRate: 9600, rtsMode: 'enable', autoOpen: false });
+      port.on('data', (data) => this.receiveData(data.toString()));
+
       port.on('error', (err) => {
         this.error(err);
         
@@ -120,8 +122,6 @@ export class NumatoDevice implements IGPIODevice {
     this.port = await this.openPort(path);
     this.lastReceived = Date.now();
    
-    this.parser = this.port!.pipe(new ReadlineParser({ delimiter: '\r' }));
-    this.parser.on('data', (chunk) => this.receiveData(chunk));
     this.commandProcHandle = setInterval(() => this.process(), POLL_INTERVAL);
     this.queueCommand(Command.setMask(new BinaryState(0, this.portCount).setAllOn()));
     this.queueCommand(Command.writeAll(new BinaryState(0xff, this.portCount)));
@@ -155,7 +155,7 @@ export class NumatoDevice implements IGPIODevice {
 
   private process() {
     try {
-      if (this.lastReceived < Date.now() - 3000) {
+      if (Date.now() > this.lastReceived + 3000) {
         this.error(new Error('No data received for 3 seconds, closing port'));
         this.cleanup();
         this._state = 'uninitialized';

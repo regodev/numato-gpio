@@ -61,7 +61,6 @@ export class NumatoDevice implements IGPIODevice {
     this.gpioState = new BinaryState(0, ports);
     this.gpioDir = NumatoDevice.getBinaryStateFromGpiCount(gpis, ports);
     this.gpiIndex = ports - gpis;
-    console.log( this.gpioDir.getString());
     this.lastTrigs = new Array(ports).fill(0);
 
     let loggedReconnect = false;

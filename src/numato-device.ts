@@ -6,7 +6,7 @@ const NUMATO_VENDOR_ID = '2A19';
 const NUMATOR_PRODUCT_ID = '0800';
 const POLL_INTERVAL = 10;
 const GPO_SPRINGBACK = 1000;
-const GPI_DEBOUNCE = 300;
+const GPI_DEBOUNCE = 80;
 
 interface ICommand {
   data: string;
@@ -43,7 +43,7 @@ export class NumatoDevice implements IGPIODevice {
   public invertInputs: boolean = false;
   public invertOutputs: boolean = false;
 
-  public onGPI: (gpi: number) => void = () => { };
+  public onGPI: (gpi: number, value: boolean) => void = () => { };
   public onLog: (level: string, message: string) => void;
   public onError: (error: Error) => void;
 
@@ -51,7 +51,7 @@ export class NumatoDevice implements IGPIODevice {
     return this._state;
   }
   
-  private gpioDir;
+  private gpioDir: BinaryState;
 
   private waitingForReadAll = false;
   private lastReceived = Date.now();
@@ -61,6 +61,7 @@ export class NumatoDevice implements IGPIODevice {
     this.gpioState = new BinaryState(0, ports);
     this.gpioDir = NumatoDevice.getBinaryStateFromGpiCount(gpis, ports);
     this.gpiIndex = ports - gpis;
+    console.log( this.gpioDir.getString());
     this.lastTrigs = new Array(ports).fill(0);
 
     let loggedReconnect = false;
@@ -109,7 +110,12 @@ export class NumatoDevice implements IGPIODevice {
   private async openPort(path: string): Promise<SerialPort> {
     return new Promise((resolve, reject) => {
       const port = new SerialPort({ path, baudRate: 9600, rtsMode: 'enable', autoOpen: false });
-      port.on('data', (data) => this.receiveData(data.toString()));
+      port.on('data', (data) => {
+        const arr = data.toString('ascii').trim().split(/[\r\n]+/);
+        arr.forEach((line) => {
+          this.receiveData(line.trim());
+        });
+      });
 
       port.on('error', (err) => {
         this.error(err);
@@ -206,10 +212,15 @@ export class NumatoDevice implements IGPIODevice {
     });
   }
 
+  public testit() {
+    this.cleanup();
+    this._state = 'uninitialized';
+  }
+
   private receiveData(data: string) {
     this.lastReceived = Date.now();
   
-    if (data.trim() === '>gpio readall') {
+    if (data.trim() === 'gpio readall') {
       this.waitingForReadAll = true;
       return;
     }
@@ -224,10 +235,11 @@ export class NumatoDevice implements IGPIODevice {
 
       for (let i = this.gpiIndex; i < this.portCount; i++) {
         let prev = this.gpioState.getAt(i);
-        if (newState.getAt(i) && !prev) {
+        const value = newState.getAt(i);
+        if (value !== prev) {
           const now = Date.now();
-          if (now - this.lastTrigs[i] > GPI_DEBOUNCE) {
-            this.onGPI(i);
+          if ((now - this.lastTrigs[i] > GPI_DEBOUNCE) || (!value)) {
+            this.onGPI(i, value);
             this.lastTrigs[i] = now;
           }
         }

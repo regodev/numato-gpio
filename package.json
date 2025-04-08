@@ -1,6 +1,6 @@
 {
   "name": "numato-gpio",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "main": "dist/index.js",
   "files": [
@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc",
     "test": "mocha",
-    "dev": "cross-env NODE_ENV=dev ts-node src/app.ts"
+    "dev": "cross-env NODE_ENV=dev ts-node index.ts"
   },
   "repository": {
     "type": "git",
@@ -32,6 +32,7 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "^20.3.2",
     "chai": "^4.3.7",
+    "cross-env": "^7.0.3",
     "mocha": "^10.2.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"

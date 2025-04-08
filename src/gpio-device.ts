@@ -8,7 +8,7 @@ export interface IGPIODevice {
   setGPO(gpo: number, value: boolean): void;
   invertInputs: boolean;
   invertOutputs: boolean;
-  onGPI(gpi: number): void;
+  onGPI(gpi: number, value: boolean): void;
   state: GPIODeviceState;
   onLog: (level: string, message: string) => void;
   onError: (error: Error) => void;

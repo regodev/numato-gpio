@@ -4,7 +4,7 @@ import { GPIODeviceState, IGPIODevice } from './gpio-device';
 
 const NUMATO_VENDOR_ID = '2A19';
 const NUMATOR_PRODUCT_ID = '0800';
-const POLL_INTERVAL = 10;
+const DEFAULT_POLL_INTERVAL = 20;
 const GPO_SPRINGBACK = 1000;
 const GPI_DEBOUNCE = 80;
 
@@ -39,6 +39,7 @@ export class NumatoDevice implements IGPIODevice {
   private gpiIndex: number;
   private _state: GPIODeviceState = 'uninitialized';
   private lastTrigs: number[] = [];
+  private pollInterval: number;
 
   public invertInputs: boolean = false;
   public invertOutputs: boolean = false;
@@ -56,7 +57,8 @@ export class NumatoDevice implements IGPIODevice {
   private waitingForReadAll = false;
   private lastReceived = Date.now();
 
-  constructor(ports: number, gpis: number) {
+  constructor(ports: number, gpis: number, pollInterval: number = DEFAULT_POLL_INTERVAL) {
+    this.pollInterval = pollInterval;
     this.portCount = ports;
     this.gpioState = new BinaryState(0, ports);
     this.gpioDir = NumatoDevice.getBinaryStateFromGpiCount(gpis, ports);
@@ -146,7 +148,7 @@ export class NumatoDevice implements IGPIODevice {
     this.port = await this.openPort(path);
     this.lastReceived = Date.now();
    
-    this.commandProcHandle = setInterval(() => this.process(), POLL_INTERVAL);
+    this.commandProcHandle = setInterval(() => this.process(), this.pollInterval);
     this.queueCommand(Command.setMask(new BinaryState(0, this.portCount).setAllOn()));
     this.queueCommand(Command.writeAll(new BinaryState(0xff, this.portCount)));
     this.queueCommand(Command.setIODir(this.gpioDir));
